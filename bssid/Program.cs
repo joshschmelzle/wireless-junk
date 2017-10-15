@@ -1,11 +1,10 @@
 ﻿using System;
+using Windows.UI.Notifications;
 
 namespace bssid
 {
     class Program
     {
-        private static string message;
-
         static void Main(string[] args)
         {
             showInterfaceInformation();
@@ -25,8 +24,10 @@ namespace bssid
 
             if (!output.Contains("disconnected"))
             {
-                message = "Wi-Fi connected to " + gv(output, "SSID") + " " + gv(output, "BSSID") + " " + gv(output, "Signal");
+                string message = "Wi-Fi connected to " + gv(output, "SSID") + " " + gv(output, "BSSID") + " " + gv(output, "Signal");
                 Console.WriteLine(message);
+                ShowToast(message);
+
                 p.WaitForExit();
             }
             else
@@ -34,7 +35,24 @@ namespace bssid
                 Console.WriteLine("Wi-Fi is disconnected");
             }
         }
-        
+
+        private static void ShowToast(string message)
+        {
+            // Get a toast XML template
+            Windows.Data.Xml.Dom.XmlDocument toastXml = ToastNotificationManager.GetTemplateContent(ToastTemplateType.ToastText01);
+
+            // Fill in the text elements
+            Windows.Data.Xml.Dom.XmlNodeList stringElements = toastXml.GetElementsByTagName("text");
+            for (int i = 0; i < stringElements.Length; i++)
+            {
+                stringElements[i].AppendChild(toastXml.CreateTextNode(message));
+            }
+
+            var toast = new ToastNotification(toastXml);
+
+            ToastNotificationManager.CreateToastNotifier("BSSID App").Show(toast);
+        }
+
         private static string gv(string output, string lookup)
         {
             string s = output.Substring(output.IndexOf(lookup));
