@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26430.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ssid-list", "ssid-list\ssid-list.csproj", "{204C148F-1AA0-4142-BA90-A03A33CD1CD0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "connected-bssid", "bssid\connected-bssid.csproj", "{7D6D2F77-622E-4731-A879-E5228DEC9949}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{204C148F-1AA0-4142-BA90-A03A33CD1CD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{204C148F-1AA0-4142-BA90-A03A33CD1CD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{204C148F-1AA0-4142-BA90-A03A33CD1CD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{204C148F-1AA0-4142-BA90-A03A33CD1CD0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D6D2F77-622E-4731-A879-E5228DEC9949}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D6D2F77-622E-4731-A879-E5228DEC9949}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D6D2F77-622E-4731-A879-E5228DEC9949}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D6D2F77-622E-4731-A879-E5228DEC9949}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
