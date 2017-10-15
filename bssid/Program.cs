@@ -8,12 +8,11 @@ namespace bssid
 
         static void Main(string[] args)
         {
-            showConnectedId();
+            showInterfaceInformation();
             Console.ReadKey();
         }
-
-        // Show SSID and Signal Strength
-        private static void showConnectedId()
+        
+        private static void showInterfaceInformation()
         {
             System.Diagnostics.Process p = new System.Diagnostics.Process();
             p.StartInfo.FileName = "netsh.exe";
@@ -22,22 +21,25 @@ namespace bssid
             p.StartInfo.RedirectStandardOutput = true;
             p.Start();
 
-            string s = p.StandardOutput.ReadToEnd();
-            string s1 = s.Substring(s.IndexOf("SSID"));
-            s1 = s1.Substring(s1.IndexOf(":"));
-            s1 = s1.Substring(2, s1.IndexOf("\n")).Trim();
+            string output = p.StandardOutput.ReadToEnd();
 
-            string s2 = s.Substring(s.IndexOf("BSSID"));
-            s2 = s2.Substring(s2.IndexOf(":"));
-            s2 = s2.Substring(2, s2.IndexOf("\n")).Trim();
-
-            string s3 = s.Substring(s.IndexOf("Signal"));
-            s3 = s3.Substring(s3.IndexOf(":"));
-            s3 = s3.Substring(2, s3.IndexOf("\n")).Trim();
-
-            message = "Wi-Fi connected to " + s1 + " " + s2 + " " + s3;
-            Console.WriteLine(message);
-            p.WaitForExit();
+            if (!output.Contains("disconnected"))
+            {
+                message = "Wi-Fi connected to " + gv(output, "SSID") + " " + gv(output, "BSSID") + " " + gv(output, "Signal");
+                Console.WriteLine(message);
+                p.WaitForExit();
+            }
+            else
+            {
+                Console.WriteLine("Wi-Fi is disconnected");
+            }
+        }
+        
+        private static string gv(string output, string lookup)
+        {
+            string s = output.Substring(output.IndexOf(lookup));
+            s = s.Substring(s.IndexOf(":"));
+            return s.Substring(2, s.IndexOf("\n")).Trim();
         }
     }
 }
