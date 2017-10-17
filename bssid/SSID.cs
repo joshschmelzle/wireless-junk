@@ -2,6 +2,9 @@
 
 namespace bssid
 {
+    /// <summary>
+    /// TODO: Add properities for Authentication, Channel, Network Type, Radio Type, Cipher, Channel, Signal, State
+    /// </summary>
     public class SSID : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;

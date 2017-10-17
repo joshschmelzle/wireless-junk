@@ -112,6 +112,9 @@ namespace bssid
             }
         }
 
+        /// <summary>
+        /// TODO: ERROR HANDLING 
+        /// </summary>
         private static string gv(string output, string lookup)
         { 
             string s = output.Substring(output.IndexOf(lookup));
@@ -133,7 +136,7 @@ namespace bssid
 
             var toast = new ToastNotification(toastXml);
 
-            ToastNotificationManager.CreateToastNotifier("BSSID App").Show(toast);
+            ToastNotificationManager.CreateToastNotifier("Wi-Fi Toaster").Show(toast);
         }
     }
 }
