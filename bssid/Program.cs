@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Threading;
 using Windows.UI.Notifications;
 
 namespace bssid
@@ -9,112 +8,79 @@ namespace bssid
     {
         static void Main(string[] args)
         {
-            showInterfaceInformation();
-            Console.ReadKey();
-        }
-        
-        private static SSID ssid;
-        private static bool connected = false;
-        
-        private static void showInterfaceInformation()
-        {
-            Process p = new Process();
-            p.StartInfo.FileName = "netsh.exe";
-            p.StartInfo.Arguments = "wlan show interfaces";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardOutput = true;
-            p.Start();
-
-            string output = p.StandardOutput.ReadToEnd();
-
-            if (!output.Contains("disconnected"))
-            {
-                ssid = new SSID(gv(output, "SSID"), gv(output, "BSSID"));
-                string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + gv(output, "Signal");
-                Console.WriteLine(message);
-                connected = true;
-                ShowToast("Wi-Fi is connected");
-                p.WaitForExit();
-            }
-            else
-            {
-                Console.WriteLine("Wi-Fi is disconnected");
-                connected = false;
-                p.WaitForExit();
-            }
-
-            bool createdNew;
-            var waitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, "11e370ec-2092-45a2-befd-0946ed24769f", out createdNew);
-            var signaled = false;
-            
-            if (!createdNew)
-            {
-                waitHandle.Set();
-                return;
-            }
-
-            var timer = new Timer(OnTimerElapsed, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
-
-            do
-            {
-                signaled = waitHandle.WaitOne(TimeSpan.FromMilliseconds(300));
-            } while (!signaled);            
-        }
-
-        private static void OnTimerElapsed(object state)
-        {
-            Process p = new Process();
-            p.StartInfo.FileName = "netsh.exe";
-            p.StartInfo.Arguments = "wlan show interfaces";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardOutput = true;
-            p.Start();
-
-            string output = p.StandardOutput.ReadToEnd();
-
-            if (!output.Contains("disconnected"))
-            {
-                ssid.Name = gv(output, "SSID");
-                string oldBSSID = ssid.BSSID;
-                string newBSSID = gv(output, "BSSID");
-                string signal = gv(output, "Signal");
-
-                if (!connected)
-                {
-                    connected = true;
-
-                    string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID;
-                    Console.WriteLine(message);
-                    ShowToast(message);
-                }
-                
-                if (ssid.BSSID != newBSSID)
-                {
-                    ssid.BSSID = newBSSID;
-                    string message = "Roam on " + ssid.Name + " from " + oldBSSID + " to " + newBSSID;
-                    Console.WriteLine(message);
-                    ShowToast(message);
-                }
-                
-                p.WaitForExit();
-            }
-            else
-            {
-                if (connected)
-                {
-                    connected = false;
-                    Console.WriteLine("Wi-Fi is disconnected");
-                    ShowToast("Wi-Fi is disconnected");
-                    p.WaitForExit();
-                }
-
-                p.WaitForExit();
-            }
+            scrape_netsh();
         }
 
         /// <summary>
-        /// TODO: ERROR HANDLING 
+        /// TODO: Handle SSID changes
         /// </summary>
+        private static SSID ssid = null;
+        private static bool connected = false;
+
+        private static void scrape_netsh()
+        {
+            Process p = new Process();
+            p.StartInfo.FileName = "netsh.exe";
+            p.StartInfo.Arguments = "wlan show interfaces";
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.RedirectStandardOutput = true;
+
+            for (;;) // enter cryptic loop
+            {
+                p.Start();
+
+                string output = p.StandardOutput.ReadToEnd();
+
+                string state = gv(output, "State");
+
+                // State : disconnected
+                // State : associating
+                // State : authenticating
+                // State : connected
+                if (state == "connected")
+                {
+                    if (ssid == null)
+                    {
+                        ssid = new SSID(gv(output, "SSID"), gv(output, "BSSID"));
+                        string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + gv(output, "Signal");
+                        Console.WriteLine(message);
+                        ShowToast(message);
+                        p.WaitForExit();
+                        connected = true;
+                        continue; // goto start of cryptic loop
+                    }
+
+                    ssid.Name = gv(output, "SSID");
+                    string oldBSSID = ssid.BSSID;
+                    string newBSSID = gv(output, "BSSID");
+                    string signal = gv(output, "Signal");
+
+                    if (!connected) // if i wasn't connected before, it's a new connection. 
+                    {
+                        connected = true;
+                        string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + signal;
+                        Console.WriteLine(message);
+                        ShowToast(message);
+                    }
+
+                    if (ssid.BSSID != newBSSID) // if interface was connected, check to see if there is a new BSSID indicating a BSS ROAM. 
+                    {
+                        ssid.BSSID = newBSSID;
+                        string message = "Roam on " + ssid.Name + " from " + oldBSSID + " to " + newBSSID;
+                        Console.WriteLine(message);
+                        ShowToast(message);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Wi-Fi is disconnected");
+                    connected = false;
+                }
+
+                p.WaitForExit();
+            }
+        }
+        
         private static string gv(string output, string lookup)
         { 
             string s = output.Substring(output.IndexOf(lookup));
@@ -122,6 +88,9 @@ namespace bssid
             return s.Substring(2, s.IndexOf("\n")).Trim();
         }
 
+        /// <summary>
+        /// Use COM server with Win32 app to make toast messages persist in the action center https://blogs.msdn.microsoft.com/tiles_and_toasts/2015/10/16/quickstart-handling-toast-activations-from-win32-apps-in-windows-10/
+        /// </summary>
         private static void ShowToast(string message)
         {
             // Get a toast XML template
