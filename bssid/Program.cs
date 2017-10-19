@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading;
 using Windows.UI.Notifications;
 
 namespace bssid
@@ -24,7 +25,7 @@ namespace bssid
             p.StartInfo.Arguments = "wlan show interfaces";
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
-
+            
             for (;;) // enter cryptic loop
             {
                 p.Start();
@@ -33,6 +34,7 @@ namespace bssid
 
                 string state = gv(output, "State");
 
+                string signal;
                 // State : disconnected
                 // State : associating
                 // State : authenticating
@@ -42,9 +44,8 @@ namespace bssid
                     if (ssid == null)
                     {
                         ssid = new SSID(gv(output, "SSID"), gv(output, "BSSID"));
-                        string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + gv(output, "Signal");
-                        Console.WriteLine(message);
-                        ShowToast(message);
+                        signal = gv(output, "Signal");
+                        ConnectedMessage(signal);
                         p.WaitForExit();
                         connected = true;
                         continue; // goto start of cryptic loop
@@ -53,34 +54,47 @@ namespace bssid
                     ssid.Name = gv(output, "SSID");
                     string oldBSSID = ssid.BSSID;
                     string newBSSID = gv(output, "BSSID");
-                    string signal = gv(output, "Signal");
-
+                    signal = gv(output, "Signal");
+                    
                     if (!connected) // if i wasn't connected before, it's a new connection. 
                     {
                         connected = true;
-                        string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + signal;
-                        Console.WriteLine(message);
-                        ShowToast(message);
+                        ConnectedMessage(signal);
                     }
 
                     if (ssid.BSSID != newBSSID) // if interface was connected, check to see if there is a new BSSID indicating a BSS ROAM. 
                     {
                         ssid.BSSID = newBSSID;
-                        string message = "Roam on " + ssid.Name + " from " + oldBSSID + " to " + newBSSID;
-                        Console.WriteLine(message);
-                        ShowToast(message);
+                        RoamMessage(oldBSSID, newBSSID);
                     }
                 }
-                else
+
+                if (state == "disconnected" && connected)
                 {
                     Console.WriteLine("Wi-Fi is disconnected");
                     connected = false;
                 }
 
                 p.WaitForExit();
+
+                Thread.Sleep(100);
             }
         }
-        
+
+        private static void RoamMessage(string oldBSSID, string newBSSID)
+        {
+            string message = "Roam on " + ssid.Name + " from " + oldBSSID + " to " + newBSSID;
+            Console.WriteLine(message);
+            ShowToast(message);
+        }
+
+        private static void ConnectedMessage(string signal)
+        {
+            string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + signal;
+            Console.WriteLine(message);
+            ShowToast(message);
+        }
+
         private static string gv(string output, string lookup)
         { 
             string s = output.Substring(output.IndexOf(lookup));
