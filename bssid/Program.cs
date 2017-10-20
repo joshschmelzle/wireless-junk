@@ -12,12 +12,6 @@ namespace bssid
             scrape_netsh();
         }
 
-        /// <summary>
-        /// TODO: Handle SSID changes
-        /// </summary>
-        private static SSID ssid = null;
-        private static bool connected = false;
-
         private static void scrape_netsh()
         {
             Process p = new Process();
@@ -25,54 +19,57 @@ namespace bssid
             p.StartInfo.Arguments = "wlan show interfaces";
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.RedirectStandardOutput = true;
-            
+
+            SSID ssid = null;
+            bool connected = false;
+
             for (;;) // enter cryptic loop
             {
                 p.Start();
 
                 string output = p.StandardOutput.ReadToEnd();
+                string interfaceState = gv(output, "State");
 
-                string state = gv(output, "State");
 
-                string signal;
-                // State : disconnected
-                // State : associating
-                // State : authenticating
-                // State : connected
-                if (state == "connected")
+                if (interfaceState == "connected")
                 {
                     if (ssid == null)
                     {
-                        ssid = new SSID(gv(output, "SSID"), gv(output, "BSSID"));
-                        signal = gv(output, "Signal");
-                        ConnectedMessage(signal);
+                        ssid = MakeSSID(output, interfaceState);
+                        ConnectedMessage(ssid);
                         p.WaitForExit();
                         connected = true;
                         continue; // goto start of cryptic loop
                     }
 
-                    ssid.Name = gv(output, "SSID");
-                    string oldBSSID = ssid.BSSID;
-                    string newBSSID = gv(output, "BSSID");
-                    signal = gv(output, "Signal");
+                    string checkSSID = gv(output, "SSID");
+
+                    if (checkSSID != ssid.Name)
+                    {
+                        ssid = MakeSSID(output, interfaceState);
+                    }
                     
+                    string checkBSSID = gv(output, "BSSID");
+
                     if (!connected) // if i wasn't connected before, it's a new connection. 
                     {
                         connected = true;
-                        ConnectedMessage(signal);
+                        ConnectedMessage(ssid);
                     }
 
-                    if (ssid.BSSID != newBSSID) // if interface was connected, check to see if there is a new BSSID indicating a BSS ROAM. 
+
+                    if (ssid.BSSID != checkBSSID) // if interface was connected, check to see if there is a new BSSID indicating a BSS ROAM. 
                     {
-                        ssid.BSSID = newBSSID;
-                        RoamMessage(oldBSSID, newBSSID);
+                        ssid.BSSID = checkBSSID;
+                        RoamMessage(ssid.Name, ssid.BSSID, checkBSSID);
                     }
                 }
 
-                if (state == "disconnected" && connected)
+                if (interfaceState == "disconnected" && connected)
                 {
                     Console.WriteLine("Wi-Fi is disconnected");
                     connected = false;
+                    continue;
                 }
 
                 p.WaitForExit();
@@ -81,16 +78,42 @@ namespace bssid
             }
         }
 
-        private static void RoamMessage(string oldBSSID, string newBSSID)
+        private static SSID MakeSSID(string output, string interfaceState)
         {
-            string message = "Roam on " + ssid.Name + " from " + oldBSSID + " to " + newBSSID;
+            SSID ssid;
+            string name = gv(output, "SSID");
+            string bssid = gv(output, "BSSID");
+            string signal = gv(output, "Signal");
+            decimal rx_rate = Convert.ToDecimal(gv(output, "Receive"));
+            decimal tx_rate = Convert.ToDecimal(gv(output, "Transmit"));
+            int channel = Convert.ToInt32(gv(output, "Channel"));
+            string radio = gv(output, "Radio").Remove(0, 6);
+            string cipher = gv(output, "Cipher");
+            string security = gv(output, "Authentication").Replace("-", "_");
+            
+            ssid = new SSID(name,
+                bssid,
+                signal,
+                rx_rate,
+                tx_rate,
+                channel,
+                (Radio)Enum.Parse(typeof(Radio), radio),
+                (Cipher)Enum.Parse(typeof(Cipher), cipher),
+                (Security)Enum.Parse(typeof(Security), security),
+                (InterfaceState)Enum.Parse(typeof(InterfaceState), interfaceState));
+            return ssid;
+        }
+
+        private static void RoamMessage(string SSID, string currentBSSID, string newBSSID)
+        {
+            string message = "Roam on " + SSID + " from " + currentBSSID + " to " + newBSSID;
             Console.WriteLine(message);
             ShowToast(message);
         }
 
-        private static void ConnectedMessage(string signal)
+        private static void ConnectedMessage(SSID ssid)
         {
-            string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + signal;
+            string message = "Wi-Fi connected to " + ssid.Name + " " + ssid.BSSID + " " + ssid.Signal;
             Console.WriteLine(message);
             ShowToast(message);
         }
